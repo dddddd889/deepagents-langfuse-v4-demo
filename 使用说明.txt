@@ -9,8 +9,9 @@ DeepAgents 接入 Langfuse v4 完整演示
   Langfuse 服务端：4.82.0。
   Langfuse Python SDK：5.2.0。
   DeepAgents：0.7.40。
-  langchain-openai：1.8.3。
+  langchain-openai：1.8.3；langchain-deepseek：1.2.1。
   python-dotenv：1.2.4。
+  PDF 文本提取：pypdf 7.1.1。
   Python：.python-version 和容器统一使用 3.12；项目最低支持 3.11。
   uv：Docker 固定 0.13.6；本地使用 0.13.6 或更新版本。
   pyproject.toml 声明直接依赖，uv.lock 锁定全部依赖及跨平台安装信息。
@@ -79,14 +80,76 @@ DeepAgents 接入 Langfuse v4 完整演示
   该方式从 .env 读取 LANGFUSE_BASE_URL=http://localhost:3000。
   容器方式会自动改用 http://langfuse-web:3000，浏览器链接仍指向 localhost。
 
+PDF 子代理协作示例
+  沿用当前 DeepSeek、Langfuse 配置；只分析你提供的 PDF，不创建样例文件。
+  将待分析文件保存到 input/，然后在项目目录执行：
+    uv sync --locked
+    uv run --locked pdf_demo.py --pdf input/你的文件.pdf
+  也可以指定任意本地路径，或者在 .env 中设置 PDF_FILE_PATH。
+  自定义问题和结果位置：
+    uv run --locked pdf_demo.py --pdf input/你的文件.pdf --question "总结主要结论和风险，每项注明页码" --output output/pdf/my-analysis.md
+
+  实际协作流程：
+    pdf-main-agent -> task(subagent_type=pdf-reader-agent)
+    -> pdf-reader-agent -> get_pdf_info / read_pdf_page
+    -> 子 Agent 返回带页码的事实 -> 主 Agent 汇总分析。
+  PDF 读取工具只提供给子 Agent，完整工具代码位于 pdf_tools.py。
+  委派与主代理汇总代码位于 pdf_demo.py，公共模型配置位于 demo_common.py。
+  程序检查实际 task 请求及返回、子代理读取事件和页码覆盖，未完整读取时明确报错。
+  结果保存到 output/pdf/analysis.md，控制台同时输出 Langfuse 追踪链接。
+  默认将原 PDF 作为 LangfuseMedia 附件上传，原文件仍保留在 --pdf 指定的位置。
+  上传和下载检查成功后才调用模型；失败时停止运行，并记录 ERROR 和失败状态。
+  打开控制台输出的追踪链接，选最外层 pdf-analysis-workflow：
+    Input 的 pdf 字段和 Media 区域会显示 PDF 附件。
+    点击附件，再选 Open in new tab 打开或下载原件。
+    当前 Langfuse 4.82 页面提示 No inline preview，不提供页内 PDF 预览。
+  Metadata 同时记录以下字段，可定位本地来源和对象存储位置：
+    pdf_path：本次读取的 PDF 绝对路径。
+    report_path：分析报告的绝对路径。
+    pdf_storage=langfuse_media：附件由 Langfuse 媒体存储管理。
+    pdf_upload_status：pending / uploaded / failed，分别表示等待、成功、失败。
+    pdf_media_id：附件编号；pdf_size_bytes：原文件字节数。
+    pdf_sha256：原文件的 SHA256；pdf_object_path：对象存储路径，不含临时签名参数。
+  默认附件位于 MinIO 的 langfuse 桶、media/demo-project/ 前缀下；相同内容会复用附件。
+  Docker 中的 pdf_path 是 /app/input 等容器路径，可按 Compose 挂载对应宿主机目录。
+  路径与初始状态从工作流开始记录，处理失败也保留；旧追踪不会自动补上传附件。
+
+  一次最多返回一页的 12000 个字符，长页通过 next_offset 继续读取。
+  本例提取文字，不做图片识别或 OCR；无文字页会明确标出，扫描件需先 OCR。
+  主代理、子代理及各自模型调用、工具参数和返回的页面文字均记录到 Langfuse。
+
+  使用容器时，input/ 只读挂载为 /app/input，output/ 挂载为 /app/output。
+  在 .env 设置 PDF_FILE_PATH=input/你的文件.pdf 后运行：
+    env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_MODEL -u OPENAI_EXTRA_BODY -u LANGFUSE_PUBLIC_KEY -u LANGFUSE_SECRET_KEY docker compose run --rm --build pdf-demo
+  pdf-demo 只在显式运行时启动，普通 up 不会调用 PDF 模型。
+  Compose 自动注入 LANGFUSE_MEDIA_PUBLIC_ENDPOINT 和 LANGFUSE_MEDIA_INTERNAL_ENDPOINT：
+  浏览器使用 S3_PUBLIC_URL（默认 http://localhost:9090）；容器通过 http://minio:9000 上传和校验。
+  pdf_media.py 保留原始签名 Host，只切换连接地址，避免容器误连自身 localhost。
+  外接 ClickHouse 时，在 docker compose 后添加 -f compose.external-clickhouse.yaml。
+
+模型工具列表中的内置工具
+  create_deep_agent 会自动加入 DeepAgents 库提供的工具，源码由 uv sync 安装。
+  ls、read_file、write_file、edit_file、delete、glob、grep 的定义和注册位于：
+    deepagents/middleware/filesystem.py 的 FilesystemMiddleware。
+  task 位于 deepagents/middleware/subagents.py 的 SubAgentMiddleware。
+  自动装配入口位于 deepagents/graph.py，默认后端为 StateBackend。
+  当前默认配置的文件工具操作 Agent 状态中的虚拟文件。
+  可通过下面的命令找到本机库源码目录：
+    uv run --locked python -c "import pathlib, deepagents; print(pathlib.Path(deepagents.__file__).parent)"
+  自定义业务工具为 demo.py 的 query_order，以及 pdf_tools.py 的两个 PDF 工具。
+  模型请求中的 Tools 列表表示可调用工具；已执行的调用查看 Langfuse 中 TOOL 类型的记录。
+
 使用 DeepSeek 的 OpenAI 兼容接口
-  继续使用现有 ChatOpenAI，在当前终端提供 DEEPSEEK_API_KEY 后，修改本地 .env：
+  继续使用 OpenAI 格式的 Chat Completions 接口，在当前终端提供 DEEPSEEK_API_KEY 后，修改本地 .env：
     OPENAI_API_KEY=${DEEPSEEK_API_KEY}
     OPENAI_BASE_URL=https://api.deepseek.com
     OPENAI_MODEL=deepseek-flash
-    OPENAI_EXTRA_BODY={"thinking":{"type":"disabled"}}
+    OPENAI_EXTRA_BODY={"thinking":{"type":"enabled"}}
   密钥引用会在运行时解析，无需将实际密钥写入 .env。
-  OPENAI_EXTRA_BODY 是本例读取的额外请求体配置；本配置显式使用非思考模式。
+  OPENAI_EXTRA_BODY 是本例读取的额外请求体配置；本配置开启思考模式，主、子代理共用。
+  DeepSeek 模型使用 ChatDeepSeekWithThinking：基于官方 LangChain 适配器接收思考内容，
+  并在后续工具请求中回传 reasoning_content。关闭思考可把 enabled 改为 disabled。
+  deepseek_model.py 提供兼容处理源码；其他模型仍使用 ChatOpenAI。
   在相同终端执行 uv run --locked demo.py 即可运行。
   使用容器运行时，确保 Compose 命令继承 DEEPSEEK_API_KEY，并排除其他项目的配置覆盖：
     env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_MODEL -u OPENAI_EXTRA_BODY -u LANGFUSE_PUBLIC_KEY -u LANGFUSE_SECRET_KEY docker compose run --rm --build demo
@@ -172,3 +235,5 @@ DeepAgents 接入 Langfuse v4 完整演示
   https://langfuse.com/self-hosting/deployment/infrastructure/containers
   https://api-docs.deepseek.com/quick_start/agent_integrations/
   https://api-docs.deepseek.com/guides/thinking_mode/
+  https://pypdf.readthedocs.io/en/stable/user/extract-text.html
+  https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware

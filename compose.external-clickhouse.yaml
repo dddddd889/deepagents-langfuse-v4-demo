@@ -160,7 +160,7 @@ services:
     depends_on:
       langfuse-web:
         condition: service_healthy
-    environment:
+    environment: &demo-env
       LANGFUSE_BASE_URL: http://langfuse-web:3000
       LANGFUSE_PUBLIC_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
@@ -173,6 +173,25 @@ services:
       DEMO_USER_ID: ${DEMO_USER_ID:-user-demo-001}
       DEMO_SESSION_ID: ${DEMO_SESSION_ID:-conversation-demo-001}
       DEMO_QUESTION: ${DEMO_QUESTION:-请调用 query_order 查询订单 ORD-1001，告诉我状态和快递单号。}
+
+  # 显式运行 PDF 示例时才调用模型；普通 up 仍只启动基础设施。
+  pdf-demo:
+    profiles: ["pdf"]
+    build: .
+    command: ["uv", "run", "--no-sync", "pdf_demo.py"]
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+    environment:
+      <<: *demo-env
+      PDF_SESSION_ID: ${PDF_SESSION_ID:-pdf-demo-session-001}
+      PDF_FILE_PATH: ${PDF_FILE_PATH:-}
+      # 浏览器使用公开地址；容器上传和校验时通过内网访问同一对象存储。
+      LANGFUSE_MEDIA_PUBLIC_ENDPOINT: ${S3_PUBLIC_URL:-http://localhost:9090}
+      LANGFUSE_MEDIA_INTERNAL_ENDPOINT: http://minio:9000
+    volumes:
+      - ./input:/app/input:ro
+      - ./output:/app/output
 
 volumes:
   postgres-data:

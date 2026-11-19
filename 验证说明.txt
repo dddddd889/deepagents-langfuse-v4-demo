@@ -48,3 +48,64 @@
   已完成固定响应测试和一次真实 DeepSeek 非思考模式调用；其他模型服务尚未实测。
   token 用量已读回，费用金额未单独核对。
   外接 ClickHouse 配置通过语法检查，未连接用户现有的 ClickHouse 实例。
+
+PDF 子代理真实验证（2026-11-19）
+  只分析用户提供的 PDF，不包含自动 PDF 生成器或样例文件。
+  已读取用户运行 2503.16416v2.pdf 生成的现有追踪，通过 parentObservationId 核对：
+    pdf-main-agent -> task -> pdf-reader-agent -> 子代理模型及 PDF 工具。
+  共 132 条步骤，包含 1 个主代理、1 个 task、1 个 PDF 阅读子代理，
+  子代理下有 16 次模型调用及 25 次 read_pdf_page 调用。
+  模型与工具输入输出均非空，模型名和 token 用量已保存。
+  使用用户提供的原始 PDF 执行此前待文件的测试，当前 7 项测试全部通过。
+  pypdf 对该文件的旋转文本发出提取不完整提示；页码覆盖校验针对提取出的文字，
+  本次调用链核对不代表图表、图片或旋转文字解析质量已经验证。
+  真实追踪：
+    http://localhost:3000/project/demo-project/traces/a3b3c0dcee4b4051884a6520f77026d5
+
+DeepSeek 思考模式验证（2026-11-19）
+  本地 OPENAI_EXTRA_BODY 已设置 thinking.type=enabled，主代理和 PDF 阅读子代理共用。
+  增加 langchain-deepseek 1.2.1 接收思考内容；deepseek_model.py 补齐后续请求中
+  每条助手消息的 reasoning_content 回传，继续使用 OpenAI 格式的 Chat Completions。
+  模拟 HTTP 测试验证工具调用前后及后续对话的思考字段均能原样传递。
+  当前共 7 项测试全部通过，包含用户真实 PDF 的工具读取测试。
+  已实际运行订单工具，完成两轮 DeepSeek 思考模式请求和一次 query_order 调用。
+  通过 Langfuse CLI 读回 10 条步骤，其中一条模型记录包含思考内容和 18 个思考 token。
+  真实追踪：
+    http://localhost:3000/project/demo-project/traces/5a5a97b866c6363297719be0e7cd0962
+  本次没有生成 PDF；用户已有真实 PDF 的完整主子代理调用链已另行核对。
+
+PDF 原件附件与存储验证（2026-11-19）
+  已补齐原 PDF 附件上传；旧版仅记录路径和文字的追踪不自动补写附件。
+  使用用户提供的 2503.16416v2.pdf，原件 563588 字节，未生成、移动或修改 PDF。
+  工作流 Input.pdf 保存 LangfuseMedia 引用；Metadata 保留来源路径、报告路径、
+  pdf_storage=langfuse_media、上传状态、媒体编号、对象路径、SHA256 和字节数。
+  上传失败会标记 ERROR 并停止，不继续调用模型；上传成功后检查对象可下载。
+  实际媒体编号为 Gbw1yTboH600689iqaj4Jb，对象路径为：
+    /langfuse/media/demo-project/Gbw1yTboH600689iqaj4Jb.pdf
+  已独立完整下载原件，SHA256 与本地原件一致：
+    19bc35c936e81fad34ebcf62a9a8f825bd02898d3751de5692247695a34ac47d
+  新的带附件完整分析已跑通；用 Langfuse CLI 读回 146 条步骤并检查真实父子关系：
+    pdf-analysis-workflow -> pdf-main-agent -> task -> pdf-reader-agent。
+  子代理下有 13 次模型调用、25 次 read_pdf_page；每次模型输入输出、模型名和 token
+  均非空，思考内容已保存；逐项核对页面工具的参数与返回文字，完整覆盖 1～25 页。
+  146 条步骤均无 ERROR；主代理最终分析和报告已生成。
+  完整追踪：
+    http://localhost:3000/project/demo-project/traces/07ace32c4c94932f6f3540db10471e2f
+  报告位置：output/pdf/attachment-analysis.md。
+  已在真实 Langfuse 页面确认 Input.pdf 和 Media 显示原 PDF 附件；点击附件后，
+  Open in new tab 可打开或下载原件。4.82 页面提示 No inline preview，不支持页内预览。
+
+  Docker 镜像已实际构建成功；另以只读挂载的用户文件 2507.21504v1.pdf 验证容器上传，
+  原件 1162699 字节，未生成或修改 PDF。容器通过 MinIO 内网地址处理公开签名链接，
+  完整下载并核对 SHA256 一致；已从 Langfuse 读回 uploaded=true、sha256_matches=true。
+  容器验证追踪：
+    http://localhost:3000/project/demo-project/traces/d2feace220db44be2ac1caf92ace07b6
+  容器验证只测试附件上传与完整下载，不额外调用模型；完整分析在宿主机真实运行。
+  外接 ClickHouse 仍仅检查 Compose 配置，未连接用户已有的 ClickHouse。
+
+附件改动回归检查
+  已通过全部 11 项受影响测试：附件签名地址转发、上传失败处理、成功下载检查、
+  真实主子代理图、页码覆盖、用户原 PDF 工具读取，以及思考字段回传。
+  Python 静态检查、uv 锁文件一致性、两份 Compose 配置和 git diff --check 均通过。
+  用户 PDF 的旋转文字仍会触发 pypdf 提取提示，页码覆盖仅指提取出的文字；
+  原 PDF 附件按原始字节上传，不受文字提取结果影响。

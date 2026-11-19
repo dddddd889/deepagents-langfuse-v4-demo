@@ -2,19 +2,12 @@
 
 import json
 import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-# 在初始化 Langfuse 前加载项目配置，避免继承其他项目的同名变量。
-# Docker 镜像不包含 .env，容器运行时仍使用 Compose 注入的变量。
-load_dotenv(Path(__file__).with_name(".env"), override=True)
+from demo_common import create_runtime, get_public_trace_url
 
 from deepagents import create_deep_agent
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
-from langfuse import get_client, propagate_attributes
+from langfuse import propagate_attributes
 from langfuse.langchain import CallbackHandler
 
 
@@ -42,38 +35,8 @@ def query_order(order_id: str) -> str:
 
 def main() -> None:
     """运行一次订单问答，并在退出前发送本次追踪数据。"""
-    required_keys = (
-        "LANGFUSE_BASE_URL",
-        "LANGFUSE_PUBLIC_KEY",
-        "LANGFUSE_SECRET_KEY",
-        "OPENAI_API_KEY",
-    )
-    for key in required_keys:
-        if not os.getenv(key) or "CHANGE_ME" in os.environ[key]:
-            raise RuntimeError(f"请先在 .env 中填写 {key}")
-
-    # 兼容服务可通过额外请求体配置能力，例如 DeepSeek 的非思考模式。
-    try:
-        extra_body = json.loads(os.getenv("OPENAI_EXTRA_BODY") or "{}")
-    except json.JSONDecodeError as error:
-        raise RuntimeError("OPENAI_EXTRA_BODY 必须是合法的 JSON 对象") from error
-    if not isinstance(extra_body, dict):
-        raise RuntimeError("OPENAI_EXTRA_BODY 必须是 JSON 对象，例如 {}")
-
-    langfuse = get_client()
-    if not langfuse.auth_check():
-        raise RuntimeError("Langfuse 认证失败：请确认服务已就绪，且项目公私钥与服务端一致")
-
-    # 模型必须支持工具调用；兼容 OpenAI 的服务可通过 OPENAI_BASE_URL 切换。
-    model = ChatOpenAI(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        api_key=os.environ["OPENAI_API_KEY"],
-        base_url=os.getenv("OPENAI_BASE_URL") or None,
-        temperature=0,
-        extra_body=extra_body,
-        timeout=60,
-        max_retries=1,
-    )
+    model, langfuse = create_runtime()
+    # 文件与 task 工具由 DeepAgents 内置中间件提供，业务工具在本文件定义。
     agent = create_deep_agent(
         model=model,
         tools=[query_order],
@@ -117,10 +80,13 @@ def main() -> None:
                 tool_results = [
                     message
                     for message in result["messages"]
-                    if isinstance(message, ToolMessage) and message.name == "query_order"
+                    if isinstance(message, ToolMessage)
+                    and message.name == "query_order"
                 ]
                 if not tool_results:
-                    raise RuntimeError("本轮模型没有调用 query_order，请确认模型支持工具调用")
+                    raise RuntimeError(
+                        "本轮模型没有调用 query_order，请确认模型支持工具调用"
+                    )
 
                 print("用户问题：", question)
                 print("最终回答：", answer)
@@ -128,14 +94,7 @@ def main() -> None:
                     print("工具返回：", message.content)
                 print("Trace ID：", request_observation.trace_id)
                 # 容器内上报走服务名，提供给用户的链接仍使用浏览器可访问的地址。
-                trace_url = langfuse.get_trace_url(trace_id=request_observation.trace_id)
-                public_url = os.getenv("LANGFUSE_PUBLIC_URL")
-                if trace_url and public_url:
-                    trace_url = trace_url.replace(
-                        os.environ["LANGFUSE_BASE_URL"].rstrip("/"),
-                        public_url.rstrip("/"),
-                        1,
-                    )
+                trace_url = get_public_trace_url(langfuse, request_observation.trace_id)
                 if trace_url:
                     print("查看追踪：", trace_url)
     finally:

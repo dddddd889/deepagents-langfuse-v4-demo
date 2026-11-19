@@ -1,0 +1,177 @@
+# 根据 Langfuse v4.82.0 官方 Compose 整理；上游许可见 THIRD_PARTY_LICENSE。
+name: deepagents-langfuse-demo
+
+# Web 和 Worker 共用连接及存储配置，避免只改到其中一个服务。
+x-langfuse-env: &langfuse-env
+  TZ: UTC
+  NEXTAUTH_URL: ${NEXTAUTH_URL:?请在.env中填写NEXTAUTH_URL}
+  DATABASE_URL: postgresql://langfuse:${POSTGRES_PASSWORD:?请设置POSTGRES_PASSWORD}@postgres:5432/langfuse
+  SALT: ${SALT:?请设置SALT}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?请设置64位十六进制ENCRYPTION_KEY}
+  TELEMETRY_ENABLED: "false"
+
+  # 日常读写使用 HTTP(S)，自动建表和更新表结构使用原生 TCP。
+  CLICKHOUSE_URL: ${CLICKHOUSE_URL:?请设置外部ClickHouse的HTTP地址}
+  CLICKHOUSE_MIGRATION_URL: ${CLICKHOUSE_MIGRATION_URL:?请设置外部ClickHouse的TCP地址}
+  CLICKHOUSE_MIGRATION_SSL: ${CLICKHOUSE_MIGRATION_SSL:-false}
+  CLICKHOUSE_USER: ${CLICKHOUSE_USER:-langfuse}
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?请设置CLICKHOUSE_PASSWORD}
+  CLICKHOUSE_DB: ${CLICKHOUSE_DB:-langfuse}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_AUTH:?请设置REDIS_AUTH}
+  REDIS_TLS_ENABLED: "false"
+
+  # 原始事件仅由容器内部访问对象存储。
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-langfuse}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?请设置MINIO_ROOT_PASSWORD}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+
+  # Worker 使用内网地址；Web 会覆盖为浏览器可访问的地址。
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: us-east-1
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-langfuse}
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+
+  # 导出文件从内网写入，下载链接使用浏览器可访问的地址。
+  LANGFUSE_S3_BATCH_EXPORT_ENABLED: "true"
+  LANGFUSE_S3_BATCH_EXPORT_BUCKET: langfuse
+  LANGFUSE_S3_BATCH_EXPORT_REGION: us-east-1
+  LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-langfuse}
+  LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+  LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT: ${S3_PUBLIC_URL:?请设置浏览器可访问的MinIO地址}
+  LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_BATCH_EXPORT_PREFIX: exports/
+
+services:
+  langfuse-web:
+    image: docker.langfuse.com/langfuse/langfuse:4.82.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: &langfuse-depends-on
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?请设置NEXTAUTH_SECRET}
+      LANGFUSE_INIT_ORG_ID: demo-org
+      LANGFUSE_INIT_ORG_NAME: DeepAgents Demo
+      LANGFUSE_INIT_PROJECT_ID: demo-project
+      LANGFUSE_INIT_PROJECT_NAME: DeepAgents Order Demo
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?请先运行init_env.py}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?请先运行init_env.py}
+      LANGFUSE_INIT_USER_EMAIL: ${LOGIN_EMAIL:-demo@example.com}
+      LANGFUSE_INIT_USER_NAME: Demo User
+      LANGFUSE_INIT_USER_PASSWORD: ${LOGIN_PASSWORD:?请先运行init_env.py}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${S3_PUBLIC_URL}
+
+    # 等待数据库初始化和 Web 就绪，再运行 DeepAgents 示例。
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/public/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  langfuse-worker:
+    image: docker.langfuse.com/langfuse/langfuse-worker:4.82.0
+    restart: unless-stopped
+    depends_on: *langfuse-depends-on
+    environment:
+      <<: *langfuse-env
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: langfuse
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "langfuse", "-d", "langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    # 队列数据不能被缓存淘汰策略自动删除。
+    command: ["redis-server", "--requirepass", "${REDIS_AUTH}", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_AUTH}
+      TZ: UTC
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    restart: unless-stopped
+    entrypoint: ["sh", "-c"]
+    # 按官方 Compose 的方式在启动前创建 langfuse 桶。
+    command: ['mkdir -p /data/langfuse && exec minio server --address ":9000" --console-address ":9001" /data']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-langfuse}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:9090:9000"
+      - "127.0.0.1:9091:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # 显式运行 demo 时才调用模型；普通 up 仅启动基础设施。
+  demo:
+    profiles: ["demo"]
+    build: .
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+    environment:
+      LANGFUSE_BASE_URL: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_TRACING_ENVIRONMENT: development
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      DEMO_USER_ID: ${DEMO_USER_ID:-user-demo-001}
+      DEMO_SESSION_ID: ${DEMO_SESSION_ID:-conversation-demo-001}
+      DEMO_QUESTION: ${DEMO_QUESTION:-请调用 query_order 查询订单 ORD-1001，告诉我状态和快递单号。}
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

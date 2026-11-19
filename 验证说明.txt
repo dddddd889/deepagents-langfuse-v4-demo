@@ -1,0 +1,21 @@
+已完成的验证
+  当前使用 pyproject.toml 和 uv.lock 管理全部依赖，Python 默认版本为 3.12。
+  uv lock --check --offline、uv sync --locked 均通过。
+  已在 uv run 环境验证依赖导入，以及订单工具的请求参数与返回结果。
+  Docker 镜像 deepagents-langfuse-demo:uv-check 构建成功。
+  已在该镜像内通过 uv run --no-sync 完成相同的依赖导入和工具检查。
+  完整环境和外接 ClickHouse 两份 Compose 都通过 docker compose config 检查。
+  init_env.py 的密钥格式、独立随机值、文件权限及已有配置保护均通过检查。
+  Python 源码通过编译检查。
+
+回调采集验证
+  使用固定的两轮模型响应替代真实模型，运行真实 DeepAgents 图、query_order 工具、
+  Langfuse CallbackHandler 和 Langfuse SDK；导出目标替换为内存收集器。
+  观察到 10 条执行记录，其中包含两次模型调用、一次 query_order 工具调用。
+  已检查用户问题和最终回答均保存在最外层记录中。
+  已检查工具参数含 order_id=ORD-1001，工具输出含 tracking_no=SF-DEMO-1001。
+  已检查模型和工具记录属于同一 Trace，且具有用户和会话信息。
+
+验证范围
+  未启动整套 Docker 基础设施，未使用真实模型 API Key，未向真实 Langfuse 写入数据。
+  真实模型用量、数据库落库及页面展示，需要按使用说明运行后核对。

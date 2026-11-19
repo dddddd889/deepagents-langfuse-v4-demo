@@ -1,0 +1,19 @@
+[project]
+name = "deepagents-langfuse-v4-demo"
+version = "0.1.0"
+description = "DeepAgents 接入 Langfuse v4 的问答与工具追踪示例"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents==0.7.40",
+    "langfuse==5.2.0",
+    "langchain-openai==1.8.3",
+    "python-dotenv==1.2.4",
+]
+
+[tool.uv]
+# 这是直接运行脚本的示例项目，无需构建和安装自身为 Python 包。
+package = false
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"

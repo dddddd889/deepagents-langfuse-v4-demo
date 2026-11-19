@@ -16,6 +16,22 @@
   已检查工具参数含 order_id=ORD-1001，工具输出含 tracking_no=SF-DEMO-1001。
   已检查模型和工具记录属于同一 Trace，且具有用户和会话信息。
 
+真实服务验证（2026-11-19）
+  已在本机启动完整 Docker Compose，六个服务均通过 Compose 就绪等待。
+  Web 健康接口返回 HTTP 200，版本为 4.82.0，页面响应及 demo-project 密钥认证通过。
+  已复现并修复 Web 监听容器主机名导致回环健康探针失败的问题，两份 Compose
+  都显式设置 HOSTNAME=0.0.0.0。
+  已验证父进程存在其他 Langfuse 变量时，本地 demo.py 仍读取项目 .env。
+  启动 Compose 时清除本次命令的同名项目公私钥变量，确保使用项目初始化配置。
+  运行真实 DeepAgents 图、query_order 工具和 Langfuse 回调，模型使用两轮固定回复。
+  已通过 Langfuse v4 Observations API v2 读取 10 条步骤，包括两条模型记录和一条工具记录。
+  已逐项核对用户完整问题、最终回答、order_id、tracking_no、调用链及用户会话。
+  测试记录带有 smoke-test、simulated-model 标签，不代表真实模型响应。
+  测试追踪：
+    http://localhost:3000/project/demo-project/traces/9040d60124aafd11610fbea0e6ac0814
+  Docker Hub 直连很慢；ClickHouse、PostgreSQL 和 Langfuse Web 通过 DaoCloud 分发站
+  按官方镜像摘要下载，已逐一核对摘要一致后添加本地官方名称。
+
 验证范围
-  未启动整套 Docker 基础设施，未使用真实模型 API Key，未向真实 Langfuse 写入数据。
-  真实模型用量、数据库落库及页面展示，需要按使用说明运行后核对。
+  基础设施和固定响应采集流程已实测，真实模型用量及费用不在上述测试范围内。
+  外接 ClickHouse 配置通过语法检查，未连接用户现有的 ClickHouse 实例。

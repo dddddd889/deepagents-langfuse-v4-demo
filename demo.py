@@ -6,8 +6,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 在初始化 Langfuse 之前加载配置；容器传入的环境变量优先。
-load_dotenv(Path(__file__).with_name(".env"), override=False)
+# 在初始化 Langfuse 前加载项目配置，避免继承其他项目的同名变量。
+# Docker 镜像不包含 .env，容器运行时仍使用 Compose 注入的变量。
+load_dotenv(Path(__file__).with_name(".env"), override=True)
 
 from deepagents import create_deep_agent
 from langchain_core.messages import ToolMessage

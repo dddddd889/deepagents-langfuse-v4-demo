@@ -66,6 +66,8 @@ DeepAgents 接入 Langfuse v4 完整演示
       "items":["无线鼠标"]
     }
   某些视图会把工具返回值包在 ToolMessage 中，展开 content 即可看到上述 JSON。
+  通过 v4 Observations API v2 读取时，本例工具 output 为序列化的 ToolMessage；
+  先解析外层 JSON，再解析 content 中的 JSON，即可取得 tracking_no 等业务字段。
   工具之前、之后分别有模型调用，记录模型选择工具以及生成最终回答的过程。
   使用 user-demo-001、conversation-demo-001 或 order-demo 标签可以筛选本次追踪。
 
@@ -107,6 +109,19 @@ DeepAgents 接入 Langfuse v4 完整演示
   init_env.py 遇到已有 .env 会退出并保留原配置。
 
 常见排查
+  启动时提示大量变量未设置：先在项目目录运行 uv run --locked init_env.py，
+  生成 .env 后再启动 Compose。激活 .venv 只切换 Python 环境，不会生成 .env。
+  如果 .env 已存在，先执行 docker compose --env-file .env config --quiet 检查，
+  不要删除已有密钥重新初始化。
+  终端中已有 LANGFUSE_PUBLIC_KEY 或 LANGFUSE_SECRET_KEY 时，Compose 会优先使用它们。
+  如需使用本项目 .env 的密钥，在 up 或 run 命令前加上：
+    env -u LANGFUSE_PUBLIC_KEY -u LANGFUSE_SECRET_KEY
+  本地 demo.py 以项目 .env 为准，容器中的示例使用 Compose 注入的配置。
+  本例直接使用 Docker Hub 上的官方 Langfuse 镜像，版本仍为 4.82.0。
+  官方说明同名标签与 docker.langfuse.com 的镜像摘要相同；直接拉取可减少一个网络入口。
+  拉取镜像时报 no such host 或 no route to host：检查 Docker Desktop 的网络及代理，
+  再执行 docker compose --progress plain pull 查看下载进度。
+  --wait-timeout 300 限制的是容器就绪等待，不限制此前的镜像下载时间。
   基础设施未就绪：
     docker compose ps
     docker compose logs --tail=100 langfuse-web langfuse-worker
@@ -142,3 +157,4 @@ DeepAgents 接入 Langfuse v4 完整演示
   https://github.com/langfuse/langfuse/blob/v4.82.0/docker-compose.yml
   https://docs.astral.sh/uv/guides/projects/
   https://docs.astral.sh/uv/guides/integration/docker/
+  https://langfuse.com/self-hosting/deployment/infrastructure/containers

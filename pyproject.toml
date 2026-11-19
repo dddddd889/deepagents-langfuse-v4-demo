@@ -8,11 +8,18 @@ dependencies = [
     "langfuse==5.2.0",
     "langchain-openai==1.8.3",
     "python-dotenv==1.2.4",
+    "pypdf==7.1.1",
+    "langchain-deepseek==1.2.1",
+    "httpx==0.28.1",
 ]
 
 [tool.uv]
 # 这是直接运行脚本的示例项目，无需构建和安装自身为 Python 包。
 package = false
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [[tool.uv.index]]
 name = "pypi"

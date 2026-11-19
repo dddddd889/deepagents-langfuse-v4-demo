@@ -190,6 +190,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      OPENAI_EXTRA_BODY: ${OPENAI_EXTRA_BODY:-}
       DEMO_USER_ID: ${DEMO_USER_ID:-user-demo-001}
       DEMO_SESSION_ID: ${DEMO_SESSION_ID:-conversation-demo-001}
       DEMO_QUESTION: ${DEMO_QUESTION:-请调用 query_order 查询订单 ORD-1001，告诉我状态和快递单号。}

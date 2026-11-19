@@ -32,6 +32,19 @@
   Docker Hub 直连很慢；ClickHouse、PostgreSQL 和 Langfuse Web 通过 DaoCloud 分发站
   按官方镜像摘要下载，已逐一核对摘要一致后添加本地官方名称。
 
+真实 DeepSeek 验证（2026-11-19）
+  继续使用 langchain-openai 的 ChatOpenAI，通过 https://api.deepseek.com 调用 deepseek-flash。
+  本地 .env 使用 OPENAI_API_KEY=${DEEPSEEK_API_KEY}，实际密钥只从进程环境读取。
+  OPENAI_EXTRA_BODY 配置 thinking.type=disabled，使用非思考模式完成工具多轮调用。
+  已验证额外请求体的 JSON 格式和对象类型检查，并检查两份 Compose 的配置传递。
+  真实调用已返回订单状态和快递单号，query_order 请求参数和返回结果均正确。
+  已从本机 Langfuse 的 Observations API v2 读回 10 条步骤，其中有两次 DeepSeek 模型调用。
+  已核对用户完整问题、实际回答、工具参数、工具结果、用户会话及 token 用量。
+  两次模型调用报告的总 token 数分别为 2878、3002；后一次含缓存读取 token。
+  真实追踪：
+    http://localhost:3000/project/demo-project/traces/94fd09c30a422a3d4e7cfcf4355ec2ad
+
 验证范围
-  基础设施和固定响应采集流程已实测，真实模型用量及费用不在上述测试范围内。
+  已完成固定响应测试和一次真实 DeepSeek 非思考模式调用；其他模型服务尚未实测。
+  token 用量已读回，费用金额未单独核对。
   外接 ClickHouse 配置通过语法检查，未连接用户现有的 ClickHouse 实例。

@@ -52,6 +52,14 @@ def main() -> None:
         if not os.getenv(key) or "CHANGE_ME" in os.environ[key]:
             raise RuntimeError(f"请先在 .env 中填写 {key}")
 
+    # 兼容服务可通过额外请求体配置能力，例如 DeepSeek 的非思考模式。
+    try:
+        extra_body = json.loads(os.getenv("OPENAI_EXTRA_BODY") or "{}")
+    except json.JSONDecodeError as error:
+        raise RuntimeError("OPENAI_EXTRA_BODY 必须是合法的 JSON 对象") from error
+    if not isinstance(extra_body, dict):
+        raise RuntimeError("OPENAI_EXTRA_BODY 必须是 JSON 对象，例如 {}")
+
     langfuse = get_client()
     if not langfuse.auth_check():
         raise RuntimeError("Langfuse 认证失败：请确认服务已就绪，且项目公私钥与服务端一致")
@@ -62,6 +70,7 @@ def main() -> None:
         api_key=os.environ["OPENAI_API_KEY"],
         base_url=os.getenv("OPENAI_BASE_URL") or None,
         temperature=0,
+        extra_body=extra_body,
         timeout=60,
         max_retries=1,
     )

@@ -79,6 +79,18 @@ DeepAgents 接入 Langfuse v4 完整演示
   该方式从 .env 读取 LANGFUSE_BASE_URL=http://localhost:3000。
   容器方式会自动改用 http://langfuse-web:3000，浏览器链接仍指向 localhost。
 
+使用 DeepSeek 的 OpenAI 兼容接口
+  继续使用现有 ChatOpenAI，在当前终端提供 DEEPSEEK_API_KEY 后，修改本地 .env：
+    OPENAI_API_KEY=${DEEPSEEK_API_KEY}
+    OPENAI_BASE_URL=https://api.deepseek.com
+    OPENAI_MODEL=deepseek-flash
+    OPENAI_EXTRA_BODY={"thinking":{"type":"disabled"}}
+  密钥引用会在运行时解析，无需将实际密钥写入 .env。
+  OPENAI_EXTRA_BODY 是本例读取的额外请求体配置；本配置显式使用非思考模式。
+  在相同终端执行 uv run --locked demo.py 即可运行。
+  使用容器运行时，确保 Compose 命令继承 DEEPSEEK_API_KEY，并排除其他项目的配置覆盖：
+    env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_MODEL -u OPENAI_EXTRA_BODY -u LANGFUSE_PUBLIC_KEY -u LANGFUSE_SECRET_KEY docker compose run --rm --build demo
+
 外接已有的自建单机 ClickHouse
   使用 compose.external-clickhouse.yaml，文件中没有本地 ClickHouse 服务及其依赖。
   先在 .env 中修改：
@@ -158,3 +170,5 @@ DeepAgents 接入 Langfuse v4 完整演示
   https://docs.astral.sh/uv/guides/projects/
   https://docs.astral.sh/uv/guides/integration/docker/
   https://langfuse.com/self-hosting/deployment/infrastructure/containers
+  https://api-docs.deepseek.com/quick_start/agent_integrations/
+  https://api-docs.deepseek.com/guides/thinking_mode/

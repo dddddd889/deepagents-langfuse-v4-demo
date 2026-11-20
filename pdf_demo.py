@@ -7,6 +7,7 @@ from pathlib import Path
 from demo_common import create_runtime, get_public_trace_url
 from pdf_tools import build_pdf_tools
 from pdf_media import prepare_pdf_attachment, verify_pdf_attachment
+from pdf_dataset import PDF_CANDIDATE_DATASET, collect_pdf_candidate
 
 from deepagents import create_deep_agent
 from langchain_core.language_models import BaseChatModel
@@ -93,8 +94,8 @@ def get_read_coverage(events: list[dict]) -> dict:
     }
 
 
-def main() -> None:
-    """真实执行 task 委派，保存主代理分析并输出可核对的追踪链接。"""
+def build_argument_parser() -> argparse.ArgumentParser:
+    """定义运行参数；只有显式指定 --collect-dataset 才开启自动采集。"""
     parser = argparse.ArgumentParser(
         description="主 Agent 委派 PDF 阅读子 Agent，汇总分析并追踪完整调用链。"
     )
@@ -115,6 +116,17 @@ def main() -> None:
         default=DEFAULT_REPORT_PATH,
         help="Markdown 分析报告保存位置",
     )
+    parser.add_argument(
+        "--collect-dataset",
+        action="store_true",
+        help="分析成功后采集到 pdf-qa-candidates；相同文件内容和问题只保留已有记录",
+    )
+    return parser
+
+
+def main() -> None:
+    """真实执行子代理分析，按显式开关收集成功案例并输出追踪链接。"""
+    parser = build_argument_parser()
     args = parser.parse_args()
     if not args.pdf:
         parser.error("请用 --pdf 或 PDF_FILE_PATH 指定你提供的 PDF 文件")
@@ -127,6 +139,8 @@ def main() -> None:
         "report_path": str(report_path),
         "pdf_storage": "langfuse_media",
         "pdf_upload_status": "pending",
+        "collect_dataset": args.collect_dataset,
+        "dataset_collection_status": "pending" if args.collect_dataset else "disabled",
     }
     # 只有 PDF 工具执行成功后才填入审计结果，不能用模型文字冒充页面读取。
     read_events = []
@@ -213,20 +227,59 @@ def main() -> None:
                 if not coverage["read_pages"]:
                     raise RuntimeError("没有可分析的 PDF 文字，扫描件请先进行 OCR。")
                 answer = result["messages"][-1].content
-                observation.update(
-                    output=answer,
-                    metadata={
-                        **file_metadata,
-                        **coverage,
-                        "reader_agent": PDF_READER_NAME,
-                    },
-                )
+                result_metadata = {
+                    **file_metadata,
+                    **coverage,
+                    "reader_agent": PDF_READER_NAME,
+                }
+                observation.update(output=answer, metadata=result_metadata)
                 trace_url = get_public_trace_url(langfuse, observation.trace_id)
                 report_path.parent.mkdir(parents=True, exist_ok=True)
                 report_path.write_text(
                     f"# PDF 分析报告\n\n- 文件：{pdf_path.name}\n- 已完整读取页码：{coverage['read_pages']}\n- 需要 OCR 页码：{coverage['ocr_pages']}\n- 阅读子代理：{PDF_READER_NAME}\n- 追踪：{trace_url or observation.trace_id}\n\n{answer}\n",
                     encoding="utf-8",
                 )
+                if args.collect_dataset:
+                    # 先完成真实委派、页码检查和报告落盘，再收集案例。
+                    with langfuse.start_as_current_observation(
+                        as_type="span",
+                        name="pdf-dataset-collection",
+                        input={
+                            "dataset_name": PDF_CANDIDATE_DATASET,
+                            "pdf_sha256": attachment.sha256_hex,
+                            "question": args.question,
+                        },
+                    ) as collection_observation:
+                        try:
+                            collection = collect_pdf_candidate(
+                                langfuse,
+                                enabled=True,
+                                attachment=attachment,
+                                filename=pdf_path.name,
+                                question=args.question,
+                                answer=answer,
+                                trace_id=observation.trace_id,
+                                observation_id=observation.id,
+                            )
+                        except Exception:
+                            result_metadata["dataset_collection_status"] = "failed"
+                            observation.update(
+                                metadata=result_metadata,
+                                level="ERROR",
+                                status_message="分析报告已保存，但数据集采集失败",
+                            )
+                            raise
+                        collection_observation.update(output=collection)
+                    result_metadata.update(collection)
+                    observation.update(metadata=result_metadata)
+                    print("数据集采集：", collection["dataset_collection_status"])
+                    print("数据集条目：", collection["dataset_item_id"])
+                    if trace_url:
+                        dataset_url = (
+                            trace_url.rsplit("/traces/", 1)[0]
+                            + f"/datasets/{collection['dataset_id']}/items"
+                        )
+                        print("查看数据集：", dataset_url)
                 print("分析文件：", pdf_path)
                 print(
                     "协作流程：pdf-main-agent -> task -> pdf-reader-agent -> PDF 工具 -> 主 Agent 汇总"

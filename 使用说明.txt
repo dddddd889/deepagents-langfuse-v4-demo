@@ -127,6 +127,27 @@ PDF 子代理协作示例
   pdf_media.py 保留原始签名 Host，只切换连接地址，避免容器误连自身 localhost。
   外接 ClickHouse 时，在 docker compose 后添加 -f compose.external-clickhouse.yaml。
 
+按标记自动采集 PDF 数据集
+  默认只分析和记录追踪；指定 --collect-dataset 才自动加入 pdf-qa-candidates：
+    uv run --locked pdf_demo.py --pdf input/你的文件.pdf --collect-dataset
+  数据集不存在时自动创建；真实 task 委派、页码覆盖检查和报告保存全部成功后才采集。
+  每条案例保存：
+    Input：question、filename，以及原 PDF 附件 pdf。
+    Expected output：先留空，待人工核对后填写参考答案。
+    Metadata：candidate_answer（本次模型回答）、reviewed=false、pdf_sha256 和采集来源。
+    来源关联：本次 Trace ID 和最外层工作流节点 ID。
+  按“PDF 原始字节的 SHA256＋原始问题”生成稳定编号；相同内容的文件改名也不会重复新增。
+  重复项返回 skipped_existing，保留原案例的全部内容、参考答案和审核状态；不会更新候选答案。
+  文件内容或问题改变时生成新案例。程序不把 reviewed=false 当成允许覆盖旧记录的条件。
+  采集成功或跳过时，控制台打印条目编号和数据集链接，追踪 Metadata 同时记录状态。
+  采集失败会明确报错并在追踪标记失败；已经完成的 Markdown 报告仍保留。
+
+  容器运行时同样显式添加开关：
+    env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_MODEL -u OPENAI_EXTRA_BODY -u LANGFUSE_PUBLIC_KEY -u LANGFUSE_SECRET_KEY docker compose run --rm --build pdf-demo uv run --no-sync pdf_demo.py --pdf input/你的文件.pdf --collect-dataset
+  在 Langfuse 打开 Datasets -> pdf-qa-candidates，查看 Input.pdf 的原件和 Metadata.candidate_answer。
+  人工核对后填写 Expected output，并在 Metadata 将 reviewed 改为 true。
+  数据集包含原 PDF 附件；按当前 Langfuse 功能范围，完整 Agent 评测需使用 SDK 实验执行代码。
+
 模型工具列表中的内置工具
   create_deep_agent 会自动加入 DeepAgents 库提供的工具，源码由 uv sync 安装。
   ls、read_file、write_file、edit_file、delete、glob、grep 的定义和注册位于：

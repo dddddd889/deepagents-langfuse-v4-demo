@@ -1,0 +1,48 @@
+# 此文件覆盖同目录的官方配置；数据库仅在独立的容器网络内访问。
+services:
+  mysql:
+    mem_limit: 768m
+    restart: unless-stopped
+  redis:
+    mem_limit: 256m
+    restart: unless-stopped
+  clickhouse:
+    # 本机已缓存官方同版本标准镜像，复用它以减少首次部署的网络下载量。
+    image: clickhouse/clickhouse-server:26.3.62.3
+    mem_limit: 2g
+    restart: unless-stopped
+    volumes:
+      - ./clickhouse-local.xml:/etc/clickhouse-server/config.d/local-memory.xml:ro
+  zookeeper:
+    mem_limit: 384m
+    environment:
+      JVMFLAGS: "-Xmx256m"
+    restart: unless-stopped
+  minio:
+    mem_limit: 512m
+    restart: unless-stopped
+  backend:
+    mem_limit: 2g
+    # 对象存储桶创建成功后再启动后端，同时让 --wait 正确识别初始化任务。
+    depends_on:
+      mc:
+        condition: service_completed_successfully
+    # 固定 Java 堆上限，避免根据整台 Docker 虚拟机的内存分配堆空间。
+    environment:
+      JAVA_OPTS: "-Dliquibase.propertySubstitutionEnabled=true -XX:+UseG1GC -Xms256m -Xmx1024m"
+    ports: !reset []
+    restart: unless-stopped
+  python-backend:
+    mem_limit: 1g
+    # 官方默认使用进程执行器，不需要 Docker-in-Docker 的特权模式。
+    privileged: false
+    restart: unless-stopped
+  frontend:
+    mem_limit: 128m
+    # 用整体替换防止 Compose 合并后仍把官方默认端口开放到所有网卡。
+    ports: !override
+      - "127.0.0.1:${OPIK_PORT:-5174}:${NGINX_PORT:-5173}"
+    restart: unless-stopped
+  demo-data-generator:
+    # 演示数据生成是一次性任务，移出默认启动范围，验证数据由 smoke 写入。
+    profiles: !override [demo]

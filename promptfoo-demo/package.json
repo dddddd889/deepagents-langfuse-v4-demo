@@ -1,0 +1,18 @@
+{
+  "name": "promptfoo-customer-service-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "用同一组电商客服问题，对比两版提示词的 promptfoo 入门示例",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "eval:demo": "node scripts/run.cjs demo",
+    "eval:improved": "node scripts/run.cjs improved",
+    "eval:live": "node --env-file-if-exists=.env scripts/run.cjs live",
+    "view": "node scripts/run.cjs view"
+  },
+  "devDependencies": {
+    "promptfoo": "0.126.0"
+  }
+}

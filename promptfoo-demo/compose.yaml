@@ -1,0 +1,53 @@
+# 独立项目名，避免与上层 Langfuse 的 Compose 服务和数据卷混在一起。
+name: promptfoo-demo
+
+# 两个服务共用同一份 SQLite 历史、缓存和日志。
+x-promptfoo-common: &promptfoo-common
+  image: ghcr.io/promptfoo/promptfoo:0.126.0
+  init: true
+  working_dir: /workspace
+  environment:
+    PROMPTFOO_CONFIG_DIR: /home/promptfoo/.promptfoo
+    PROMPTFOO_CACHE_PATH: /home/promptfoo/.promptfoo/cache
+    PROMPTFOO_LOG_DIR: /home/promptfoo/.promptfoo/logs
+    PROMPTFOO_DISABLE_TELEMETRY: "1"
+    # Compose 自动读取本目录的 .env；模拟评测不需要填写模型凭证。
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+    OPENAI_MODEL: ${OPENAI_MODEL:-}
+  volumes:
+    # 官方镜像程序和依赖位于 /app，示例挂在 /workspace，避免覆盖镜像文件。
+    - .:/workspace:ro
+    - ./output:/workspace/output:rw
+    - promptfoo-data:/home/promptfoo/.promptfoo
+
+services:
+  # docker compose up -d 只启动结果界面；地址为 http://localhost:15500。
+  promptfoo:
+    <<: *promptfoo-common
+    entrypoint: ["node", "/app/dist/src/server/index.js"]
+    command: []
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:15500:3000"
+
+  # docker compose run --rm eval 跑六道题 × 两版提示词，故意保留旧版的三个失败。
+  # 有断言失败时退出码为 100；结果仍写入共享历史和 output 目录。
+  eval:
+    <<: *promptfoo-common
+    profiles: ["tools"]
+    entrypoint: ["node", "/app/dist/src/entrypoint.js"]
+    command:
+      - eval
+      - -c
+      - promptfooconfig.cjs
+      - --no-cache
+      - -o
+      - output/demo.json
+      - output/demo.html
+    # 该服务只执行一次命令，不使用镜像内面向界面服务的健康检查。
+    healthcheck:
+      disable: true
+
+volumes:
+  promptfoo-data:

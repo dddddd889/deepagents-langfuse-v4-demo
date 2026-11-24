@@ -245,7 +245,78 @@ PDF 子代理协作示例
   finally 中的 flush 确保短脚本退出前发送已缓冲的追踪数据。
   query_order 本身没有再加 observe，避免同一次工具调用重复记录。
 
+压缩、Skill、MCP 与评估的完整样例
+  宿主机入口：full_trace_demo.py。运行前先启动本地 Langfuse，沿用项目 .env 模型配置。
+  完整运行会调用真实模型；2026-11-24 已按用户要求执行，并从 Langfuse 回读核对。
+  后续执行命令：
+    uv sync --locked
+    uv run --locked full_trace_demo.py
+  可指定评估报告保存目录：
+    uv run --locked full_trace_demo.py --output-dir output/full-trace
+
+  本轮任务：通过 MCP 查询 ORD-1001 的订单与物流，保留历史选择的联系渠道。
+  程序注入明确标记的演示历史，达到 12 条消息阈值后，由 DeepAgents 原生中间件
+  将旧消息交给真实模型写摘要，保留最近 4 条消息；这是方便观察的演示阈值。
+  原始历史由原生中间件写到本轮 StateBackend 的 /conversation_history/，
+  摘要和最近消息进入后续模型上下文；这些虚拟文件随本次图状态存在，不是磁盘文件。
+  context_compression 仅在真正调用摘要模型时建节点，不把每次阈值检查算成压缩。
+  输入记录被摘要的消息，输出记录实际摘要；估算 token 数只放 Metadata，
+  不混进模型实际用量或费用。真实模型用量由 CallbackHandler 在 generation 上记录。
+
+  demo_skills/order-status/SKILL.md 定义查询步骤和最终 JSON 五个字段。
+  文件注入 StateBackend，通过原生 pinned_skills 加载到模型消息，skill.load 记录正文。
+  full_trace_mcp_server.py 是独立的本地订单 MCP 服务，固定版本 mcp==2.3.0。
+  Agent 使用同一虚拟环境启动子进程，通过 stdio 完成发现、查询与返回值校验。
+  query_order_mcp 是 Agent 的工具节点，内部 mcp.call_tool 表示 MCP 协议调用边界。
+  MCP 返回值由 OrderLookupResult 定义明确的结构；未知订单返回 found=false。
+
+  在 Tracing 筛选 full-trace-demo 标签，打开输出链接中的 Trace，核对关键节点：
+    order-full-trace-workflow：完整用户问题、最终回答及完成次数。
+    mcp.discover_tools：实际发现的 MCP 工具与输入输出结构。
+    skill.load：实际加载的 Skill 正文。
+    context_compression -> generation：压缩输入、摘要及写摘要的模型调用。
+    query_order_mcp -> mcp.call_tool：工具参数、协议返回结果和错误。
+    evaluate-order-answer：规则评估结果。
+  框架还会记录模型选择工具、生成回答、tools 批次等中间节点。
+  回调在当前协程内执行，手动记录的 MCP 节点继承对应工具的父子关系。
+
+  评估以 BOOLEAN Scores 关联最外层节点，0 表示失败，1 表示通过：
+    answer_format：最终回答是仅含 Skill 指定五个字段的 JSON 对象。
+    order_accuracy：订单字段与本次 MCP 成功返回的订单一致；没有实际查询不通过。
+    compression_fact_retention：摘要和最终回答都保留历史联系渠道“在线客服”。
+    workflow_execution：实际执行了压缩、Skill 正文加载和 MCP 查询。
+  这些是固定任务的代码规则检查；事实保留规则检查关键词，不评价泛化摘要质量。
+  所有规则完成后，报告保存到 output/full-trace/<trace_id>.json，
+  包含回答、实际执行记录、评估分数和 Trace 链接；评估不通过时程序以非零状态退出。
+  节点执行异常会标记 ERROR，并由 finally 发送缓冲区；不会伪造成功结果。
+
+  自定义面板统计压缩次数：选择 Observations，Metric 选 Count，
+  用 Observation Name = context_compression 筛选。名称是本样例上报的名称，
+  并非 Langfuse 内置的“压缩”指标。失败执行也有节点，需要成功次数时排除 ERROR。
+  根节点 Metadata 的 compression_count 则只统计成功写出非空摘要的次数。
+
+  不调用真实模型、不写入 Langfuse 的验证命令：
+    uv run --locked python -m unittest discover -s tests -p 'test_full_trace.py' -v
+  测试使用固定模型响应和内存 Trace/Scores，MCP 仍通过真实本地子进程通信。
+  查看帮助也不会请求模型：uv run --locked full_trace_demo.py --help。
+
+  2026-11-24 实测记录：
+    最新 Trace：http://localhost:3000/project/demo-project/traces/d22c585ae2781b9c1a1a8c4808e1e5bb
+    真实模型为 deepseek-flash，共 3 次调用；实际压缩、Skill 正文加载、MCP 查询各 1 次。
+    Langfuse 回读共 20 个节点，关键节点输入输出、父子关系及用户/会话归属均已核对。
+    answer_format、order_accuracy、compression_fact_retention、workflow_execution
+    四项 BOOLEAN 规则评估均通过，服务端分数均关联工作流根节点。
+    本地报告：output/full-trace/d22c585ae2781b9c1a1a8c4808e1e5bb.json。
+    服务端节点、分数与审计结果分别保存在同目录的 .observations.json、.scores.json、.audit.json。
+    首轮真实运行分数通过，但回读发现评估节点继承了框架收尾节点上下文。
+    已显式指定根节点为评估父节点，新增回归检查先复现失败、修复后 8 项测试通过，
+    随后重新执行并回读确认。首轮 Trace 30663e81f02acad14e7ca4f918b8c3fa 保留作为排障记录。
+
 官方参考
+  https://reference.langchain.com/python/deepagents/middleware/summarization/SummarizationMiddleware
+  https://reference.langchain.com/python/deepagents/middleware/skills/SkillsMiddleware
+  https://py.sdk.modelcontextprotocol.io/client/transports/
+  https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-sdk
   https://langfuse.com/integrations/frameworks/langchain-deepagents
   https://langfuse.com/integrations/frameworks/langchain
   https://langfuse.com/docs/observability/sdk/instrumentation

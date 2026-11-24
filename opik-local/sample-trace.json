@@ -1,0 +1,511 @@
+{
+  "description": "一条人工构造的展示 trace。不是实际执行记录，不包含评分。",
+  "traces": [
+    {
+      "id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "name": "模拟数据：压缩、Skill 与 MCP",
+      "project_name": "opik-synthetic-trace-demo",
+      "start_time": "2026-11-24T03:11:27.084564+00:00",
+      "end_time": "2026-11-24T03:11:29.084564+00:00",
+      "input": {
+        "question": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+      },
+      "output": {
+        "answer": "【第 1 页】演示 PDF 介绍了 Agent 的上下文、skill 和工具调用。此回答为模拟数据。"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      },
+      "tags": [
+        "模拟数据",
+        "synthetic",
+        "无评分"
+      ]
+    }
+  ],
+  "spans": [
+    {
+      "id": "b00aa819-8af7-4479-8dc8-1bd21e12b8f1",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": null,
+      "name": "skill.load",
+      "type": "general",
+      "start_time": "2026-11-24T03:11:27.124564+00:00",
+      "end_time": "2026-11-24T03:11:27.264564+00:00",
+      "input": {
+        "url": "https://example.invalid/skills/pdf-review/SKILL.md"
+      },
+      "output": {
+        "http_status": 200,
+        "version": "1.0.0",
+        "content": "先查询 PDF 信息，再读取指定页面；中文回答，引用页码，不编造缺失信息。",
+        "snapshot_id": "82714e1f4230821e2ec413f6decbc2513dde93fa41f4235d24af184931cc098e"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "478e92d6-2ba3-4ed7-a80e-2f8a2ad79076",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": null,
+      "name": "mcp.initialize",
+      "type": "general",
+      "start_time": "2026-11-24T03:11:27.284564+00:00",
+      "end_time": "2026-11-24T03:11:27.434564+00:00",
+      "input": {
+        "endpoint": "https://mcp.example.invalid/mcp"
+      },
+      "output": {
+        "protocolVersion": "2025-11-25",
+        "serverInfo": {
+          "name": "demo-mcp",
+          "version": "1.0.0"
+        },
+        "capabilities": {
+          "tools": {}
+        }
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "cf136ed1-f049-46af-af4d-e61355ddfed5",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": null,
+      "name": "mcp.tools.list",
+      "type": "general",
+      "start_time": "2026-11-24T03:11:27.434564+00:00",
+      "end_time": "2026-11-24T03:11:27.634564+00:00",
+      "input": {
+        "method": "tools/list"
+      },
+      "output": {
+        "tools": [
+          {
+            "name": "get_pdf_info",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "read_pdf_page",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "page_number": {
+                  "type": "integer"
+                },
+                "offset": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "page_number"
+              ]
+            }
+          }
+        ],
+        "snapshot_id": "336bb4796f3ce6a9b5a893517d96a313f8c431991da91959471ca29444b59fe5"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "7272c67b-882e-4223-a695-7844456c3027",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": null,
+      "name": "context.compact",
+      "type": "general",
+      "start_time": "2026-11-24T03:11:27.684564+00:00",
+      "end_time": "2026-11-24T03:11:27.934564+00:00",
+      "input": {
+        "context_before": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "只分析第 1 页，中文回答并标注页码。"
+            },
+            {
+              "role": "user",
+              "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+            },
+            {
+              "role": "user",
+              "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+            },
+            {
+              "role": "user",
+              "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+            }
+          ]
+        },
+        "before_characters": 529
+      },
+      "output": {
+        "summary": "用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。",
+        "context_after": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "压缩记忆：用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+            },
+            {
+              "role": "user",
+              "content": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+            }
+          ]
+        },
+        "after_characters": 64,
+        "before_snapshot_id": "6b6339e83af5ea99ab2adc2d6e197b9315129933a545c857388f7324d417ac92",
+        "after_snapshot_id": "9ee05cc419da7b844d27fc2d036b530a6016d3f5d4502b8d0d8cf96ad3426b69"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "14410c70-50a9-4242-844f-0bf09b336895",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "7272c67b-882e-4223-a695-7844456c3027",
+      "name": "context.summary",
+      "type": "llm",
+      "start_time": "2026-11-24T03:11:27.734564+00:00",
+      "end_time": "2026-11-24T03:11:27.884564+00:00",
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "content": "只分析第 1 页，中文回答并标注页码。"
+          },
+          {
+            "role": "user",
+            "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+          },
+          {
+            "role": "user",
+            "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+          },
+          {
+            "role": "user",
+            "content": "这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。这是模拟背景，用于展示上下文压缩。"
+          }
+        ]
+      },
+      "output": {
+        "content": "用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": null,
+      "name": "agent.loop",
+      "type": "general",
+      "start_time": "2026-11-24T03:11:27.984564+00:00",
+      "end_time": "2026-11-24T03:11:28.984564+00:00",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "演示 Agent。已加载 skill：先查询 PDF 信息，再读取指定页面；中文回答，引用页码，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "压缩记忆：用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+          }
+        ],
+        "tools": [
+          {
+            "name": "get_pdf_info",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "read_pdf_page",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "page_number": {
+                  "type": "integer"
+                },
+                "offset": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "page_number"
+              ]
+            }
+          }
+        ]
+      },
+      "output": {
+        "answer": "【第 1 页】演示 PDF 介绍了 Agent 的上下文、skill 和工具调用。此回答为模拟数据。"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "cd202362-efff-4bf4-9887-80aa7a951bfb",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "name": "model.plan",
+      "type": "llm",
+      "start_time": "2026-11-24T03:11:27.994564+00:00",
+      "end_time": "2026-11-24T03:11:28.134564+00:00",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "演示 Agent。已加载 skill：先查询 PDF 信息，再读取指定页面；中文回答，引用页码，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "压缩记忆：用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+          }
+        ],
+        "tools": [
+          {
+            "name": "get_pdf_info",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "read_pdf_page",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "page_number": {
+                  "type": "integer"
+                },
+                "offset": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "page_number"
+              ]
+            }
+          }
+        ]
+      },
+      "output": {
+        "tool_calls": [
+          {
+            "id": "demo-call-1",
+            "name": "get_pdf_info",
+            "arguments": {}
+          }
+        ]
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false,
+        "context_snapshot_id": "d32daea7d5d18e323081239cac1ee0c1eb93fb9ac3fe586ce2a0770694651603",
+        "skill_snapshot_id": "82714e1f4230821e2ec413f6decbc2513dde93fa41f4235d24af184931cc098e",
+        "tool_manifest_id": "336bb4796f3ce6a9b5a893517d96a313f8c431991da91959471ca29444b59fe5"
+      }
+    },
+    {
+      "id": "ed7cd6de-e48e-4870-964b-a608afac4a9a",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "name": "get_pdf_info",
+      "type": "tool",
+      "start_time": "2026-11-24T03:11:28.134564+00:00",
+      "end_time": "2026-11-24T03:11:28.234564+00:00",
+      "input": {},
+      "output": {
+        "filename": "演示PDF（模拟）.pdf",
+        "page_count": 1,
+        "_mcp": {
+          "server": "demo-mcp",
+          "request_id": "demo-rpc-1",
+          "isError": false
+        }
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false,
+        "tool_origin": "mcp",
+        "mcp_method": "tools/call",
+        "tool_call_id": "demo-call-1"
+      }
+    },
+    {
+      "id": "338f1cb1-7ae2-4da3-865c-35b5a38bdea6",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "name": "model.request_page",
+      "type": "llm",
+      "start_time": "2026-11-24T03:11:28.244564+00:00",
+      "end_time": "2026-11-24T03:11:28.384564+00:00",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "演示 Agent。已加载 skill：先查询 PDF 信息，再读取指定页面；中文回答，引用页码，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "压缩记忆：用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "demo-call-1",
+            "content": "{\"filename\": \"演示PDF（模拟）.pdf\", \"page_count\": 1, \"_mcp\": {\"server\": \"demo-mcp\", \"request_id\": \"demo-rpc-1\", \"isError\": false}}"
+          }
+        ]
+      },
+      "output": {
+        "tool_calls": [
+          {
+            "id": "demo-call-2",
+            "name": "read_pdf_page",
+            "arguments": {
+              "page_number": 1,
+              "offset": 0
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    },
+    {
+      "id": "9e718150-ef57-4625-a67b-f51d709fdad4",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "name": "read_pdf_page",
+      "type": "tool",
+      "start_time": "2026-11-24T03:11:28.384564+00:00",
+      "end_time": "2026-11-24T03:11:28.584564+00:00",
+      "input": {
+        "page_number": 1,
+        "offset": 0
+      },
+      "output": {
+        "page_number": 1,
+        "text": "模拟 PDF 正文：Agent 运行包括上下文处理、skill 加载和工具执行。",
+        "next_offset": null,
+        "_mcp": {
+          "server": "demo-mcp",
+          "request_id": "demo-rpc-2",
+          "isError": false
+        }
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false,
+        "tool_origin": "mcp",
+        "mcp_method": "tools/call",
+        "tool_call_id": "demo-call-2"
+      }
+    },
+    {
+      "id": "a884be7e-ddc3-4b4f-9dbe-fdf86246b98d",
+      "trace_id": "ade24678-9680-4845-a854-4f51cf347a27",
+      "project_name": "opik-synthetic-trace-demo",
+      "parent_span_id": "4509863e-5046-40a0-b873-52fca80856e6",
+      "name": "model.answer",
+      "type": "llm",
+      "start_time": "2026-11-24T03:11:28.594564+00:00",
+      "end_time": "2026-11-24T03:11:28.934564+00:00",
+      "input": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "演示 Agent。已加载 skill：先查询 PDF 信息，再读取指定页面；中文回答，引用页码，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "压缩记忆：用户要求中文回答、标注页码，仅分析第 1 页，不编造缺失信息。"
+          },
+          {
+            "role": "user",
+            "content": "请分析演示 PDF 的第 1 页，用中文回答并标注页码。"
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "demo-call-2",
+            "content": "{\"page_number\": 1, \"text\": \"模拟 PDF 正文：Agent 运行包括上下文处理、skill 加载和工具执行。\", \"next_offset\": null, \"_mcp\": {\"server\": \"demo-mcp\", \"request_id\": \"demo-rpc-2\", \"isError\": false}}"
+          }
+        ]
+      },
+      "output": {
+        "content": "【第 1 页】演示 PDF 介绍了 Agent 的上下文、skill 和工具调用。此回答为模拟数据。"
+      },
+      "metadata": {
+        "simulated": true,
+        "data_origin": "synthetic",
+        "model_called": false,
+        "evaluation_requested": false
+      }
+    }
+  ]
+}

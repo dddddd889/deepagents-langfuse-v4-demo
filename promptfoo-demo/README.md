@@ -1,5 +1,7 @@
 # promptfoo 入门：对比两版客服提示词
 
+**真实模型完整体验入口：** [体验指南](体验指南.md)。已增加 TAMS 接入、AI 评分、知识资料对比、多轮对话、动态安全测试和失败题重测。
+
 这个独立示例用 **6 条电商客服问题 × 2 版提示词 = 12 次评测**，演示如何批量提问、自动评分、定位失败案例。
 
 默认用本地固定规则模拟回答，**不需要 API Key，不调用真实模型，不产生模型费用**。模拟分数用于理解评测流程，不证明改进版提示词在真实模型上一定更好。完成依赖安装后，模拟评测可以离线运行。
@@ -27,11 +29,9 @@ docker compose run --rm eval
 docker compose run --rm eval eval -c promptfooconfig.cjs --no-cache --filter-prompts '^improved' -o output/improved.json output/improved.html
 ```
 
-配置本目录 `.env` 后，运行真实模型对比：
+当前真实体验默认使用 TAMS。终端已设置 `TAMS_TOKEN` 时，可以直接运行；也可以参考本目录 `.env.example` 在本地配置：
 
 ```bash
-cp .env.example .env
-# 在本地编辑 .env，填写模型凭证、模型名和基础地址。
 docker compose run --rm eval eval -c promptfooconfig.live.cjs --no-cache -o output/live.json output/live.html
 ```
 
@@ -143,17 +143,29 @@ promptfoo-demo/
 
 ## 5. 切换到真实模型
 
+默认使用本次指定的 TAMS 接口与模型：
+
+```dotenv
+MODEL_PROVIDER=tams
+TAMS_BASE_URL=https://dev-cn.tensorart.net/v2/openapi/v1
+TAMS_MODEL=volcano/deepseek-v4-1-flash-260910
+# TAMS_TOKEN 在本地终端环境或被 Git 忽略的 .env 中填写。
+```
+
+已有 `TAMS_TOKEN` 环境变量时无需创建 `.env`。在网页结果页的 **Eval actions → View YAML** 可以查看接口、模型和凭证变量名；**Edit and re-run** 可载入并修改整套评测配置。
+
 ```bash
 cp .env.example .env
-# 在本地编辑 .env，填写模型凭证、模型名和基础地址。
+# 仅在需要本地 .env 时复制并填写 TAMS_TOKEN，不要覆盖已有配置。
 npm run eval:live
 ```
 
-真实模式使用同样的两版提示词、六条题目及评分规则，通过 OpenAI 兼容的 Chat Completions 接口调用模型。默认配置为 `gpt-4.1-mini`，可以在 `.env` 中改成自己有权限使用的模型。
+真实模式使用同样的两版提示词、六条题目及评分规则，通过 OpenAI 兼容的 Chat Completions 格式调用实际配置的 TAMS 地址。
 
-例如使用 DeepSeek：
+如果需要改用其他 OpenAI 兼容接口，显式切换 `MODEL_PROVIDER` 并填写对应配置，例如：
 
 ```dotenv
+MODEL_PROVIDER=openai
 OPENAI_API_KEY=在本地填写你的密钥
 OPENAI_MODEL=deepseek-chat
 OPENAI_BASE_URL=https://api.deepseek.com/v1

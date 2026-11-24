@@ -11,6 +11,13 @@ x-promptfoo-common: &promptfoo-common
     PROMPTFOO_CACHE_PATH: /home/promptfoo/.promptfoo/cache
     PROMPTFOO_LOG_DIR: /home/promptfoo/.promptfoo/logs
     PROMPTFOO_DISABLE_TELEMETRY: "1"
+    # 教学安全测试的生成和评分都使用指定模型，不调用 Promptfoo 托管生成服务。
+    PROMPTFOO_DISABLE_REMOTE_GENERATION: "1"
+    # 真实模型、评分模型和攻击生成模型共用本次指定的 TAMS 接入配置。
+    MODEL_PROVIDER: ${MODEL_PROVIDER:-tams}
+    TAMS_TOKEN: ${TAMS_TOKEN:-}
+    TAMS_BASE_URL: ${TAMS_BASE_URL:-https://dev-cn.tensorart.net/v2/openapi/v1}
+    TAMS_MODEL: ${TAMS_MODEL:-volcano/deepseek-v4-1-flash-260910}
     # Compose 自动读取本目录的 .env；模拟评测不需要填写模型凭证。
     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}

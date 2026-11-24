@@ -21,9 +21,13 @@ let cliArgs;
 if (mode === 'view') {
   cliArgs = ['view', '--port', '15500', '--no'];
 } else if (['demo', 'improved', 'live'].includes(mode)) {
-  if (mode === 'live' && (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === '请在本地填写')) {
-    console.error('请复制 .env.example 为 .env，并在本地填写 OPENAI_API_KEY 后再运行真实模型评测。');
-    process.exit(1);
+  if (mode === 'live') {
+    // 只检查当前选择的接口凭证，避免误用电脑上其他项目的模型密钥。
+    const credentialName = process.env.MODEL_PROVIDER === 'openai' ? 'OPENAI_API_KEY' : 'TAMS_TOKEN';
+    if (!process.env[credentialName] || process.env[credentialName] === '请在本地填写') {
+      console.error(`请在终端或本目录 .env 中配置 ${credentialName} 后再运行真实模型评测。`);
+      process.exit(1);
+    }
   }
   mkdirSync(path.join(projectRoot, 'output'), { recursive: true });
   cliArgs = [

@@ -1,0 +1,34 @@
+# 两道题及政策完全虚构，仅用于演示上下文与回答的一致性，不代表真实业务。
+- description: 资料有答案：第10天申请未拆封盲盒退货
+  vars:
+    question: 纸舟商店的普通盲盒没有拆封，签收后第10天还能申请退货吗？最晚第几天可以申请？
+    context: &teachingPolicy |
+      政策编号：TEACHING-POLICY-001。
+      纸舟商店的普通盲盒在未拆封的情况下，可以在签收后12天（含）内申请退货。
+      定制商品不适用上述退货政策。
+      这份资料没有提供退款到账时限。
+  assert:
+    - type: javascript
+      metric: 识别资料有答案
+      value: JSON.parse(output).unknown === false
+    - type: javascript
+      metric: 引用正确政策
+      value: JSON.parse(output).sourceId === 'TEACHING-POLICY-001'
+    - type: javascript
+      metric: 退货规则一致
+      value: /12/.test(JSON.parse(output).answer) && /可以|允许|支持|能申请/.test(JSON.parse(output).answer) && !/不可以|不能申请|不支持|不允许|不可申请/.test(JSON.parse(output).answer)
+
+- description: 资料没有答案：退款到账时限必须明确不知道
+  vars:
+    question: 纸舟商店退款审核通过后，款项通常几天到账？
+    context: *teachingPolicy
+  assert:
+    - type: javascript
+      metric: 识别资料不足
+      value: JSON.parse(output).unknown === true && JSON.parse(output).sourceId === null
+    - type: javascript
+      metric: 明确不知道
+      value: /不知道|无法确定|未提供|无法确认|不清楚|未说明|未明确/.test(JSON.parse(output).answer)
+    - type: javascript
+      metric: 不编造到账时限
+      value: '!/[0-9一二三四五六七八九十百]+\s*(个)?\s*(工作)?\s*(天|日|小时|分钟)/.test(JSON.parse(output).answer)'

@@ -1,0 +1,20 @@
+[
+  {
+    "role": "system",
+    "content": "你是一个用于教学的电商客服助手，订单信息均为虚构示例。只输出合法JSON对象，包含orderId、statusKnown、reply三个字段，不要输出Markdown。orderId为用户在当前对话中明确提供的订单号；如果历史中没有提供，返回null。reply是简短中文回答。你只能看到当前对话，没有查询订单后台的工具，因此statusKnown必须是false。可以记住和复述用户提供的订单号，但不能编造订单已经发货、签收或退款等后台状态。当用户询问是否发货时，明确说“无法确认”，并说明需要查询订单系统。"
+  },
+  {% for completion in _conversation %}
+  {
+    "role": "user",
+    "content": {{ completion.input | dump }}
+  },
+  {
+    "role": "assistant",
+    "content": {{ completion.output | dump }}
+  },
+  {% endfor %}
+  {
+    "role": "user",
+    "content": {{ question | dump }}
+  }
+]

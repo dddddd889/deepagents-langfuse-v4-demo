@@ -10,6 +10,8 @@ from unittest.mock import patch
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
+from langchain.agents.middleware import ToolCallLimitMiddleware
+from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 
 from pdf_demo import PDF_READER_NAME, build_pdf_agent, get_read_coverage
 from pdf_tools import build_pdf_tools
@@ -25,6 +27,33 @@ class FixedToolModel(FakeMessagesListChatModel):
 
 class PdfWorkflowTests(unittest.TestCase):
     """验证主代理实际执行 task，工具由子代理执行且消息相互隔离。"""
+
+    def test_reader_budget_stops_repeated_page_reads(self):
+        """模型重复请求同一页时，子代理应在工具预算处失败，而不是继续读取。"""
+        events = []
+
+        @tool
+        def read_pdf_page(page_number: int, offset: int = 0) -> str:
+            """记录实际执行次数，返回已完整读取的页面。"""
+            events.append(page_number)
+            return json.dumps({"page_number": page_number, "text": "正文", "next_offset": None})
+
+        main_model = FixedToolModel(responses=[AIMessage(content="", tool_calls=[{
+            "name": "task", "args": {"description": "读取 PDF", "subagent_type": PDF_READER_NAME},
+            "id": "delegate-reader", "type": "tool_call",
+        }])])
+        reader_model = FixedToolModel(responses=[
+            AIMessage(content="", tool_calls=[{
+                "name": "read_pdf_page", "args": {"page_number": 1},
+                "id": call_id, "type": "tool_call",
+            }]) for call_id in ("first-read", "repeat-read")
+        ])
+        agent = build_pdf_agent(main_model, [read_pdf_page], reader_model, reader_middleware=[
+            ToolCallLimitMiddleware(tool_name="read_pdf_page", run_limit=1, exit_behavior="error"),
+        ])
+        with self.assertRaises(ToolCallLimitExceededError):
+            agent.invoke({"messages": [{"role": "user", "content": "分析 PDF"}]}, config={"recursion_limit": 30})
+        self.assertEqual(events, [1])
 
     def test_task_runs_reader_and_returns_to_main(self):
         """实际运行 DeepAgents 图，不生成 PDF，也不调用外部模型。"""

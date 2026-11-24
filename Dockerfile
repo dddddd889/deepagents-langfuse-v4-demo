@@ -8,6 +8,7 @@ ENV UV_PYTHON_DOWNLOADS=never
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --locked --no-dev --no-cache
 
-COPY demo.py demo_common.py deepseek_model.py pdf_demo.py pdf_tools.py pdf_media.py pdf_dataset.py ./
+# PDF 主子代理已拆到独立模块，容器入口需要同时复制该文件。
+COPY demo.py demo_common.py deepseek_model.py pdf_demo.py pdf_agent.py pdf_tools.py pdf_media.py pdf_dataset.py ./
 # 依赖已在构建时安装，启动时直接使用该环境。
 CMD ["uv", "run", "--no-sync", "demo.py"]

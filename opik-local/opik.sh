@@ -61,9 +61,21 @@ case "$COMMAND" in
   logs) compose logs --follow --tail 100 "$@" ;;
   pull) compose pull "$@" ;;
   smoke) python3 "$PROJECT_DIR/smoke.py" "$@" ;;
+  demo|session-demo)
+    # 独立环境运行迁移后的真实订单样例；首次自动安装锁定的依赖。
+    uv run --project "$PROJECT_DIR" --locked --default-index https://pypi.org/simple "$PROJECT_DIR/order_demo.py" "$@"
+    ;;
+  pdf-demo)
+    # 复用 PDF 主子代理和逐页工具，将模型、工具、附件记录到 Opik。
+    uv run --project "$PROJECT_DIR" --locked --default-index https://pypi.org/simple "$PROJECT_DIR/pdf_demo.py" "$@"
+    ;;
+  evidence-demo)
+    # 同一条 PDF 轨迹包含真实压缩、HTTP skill、MCP 调用，取证评估也写入 Opik。
+    uv run --project "$PROJECT_DIR" --locked --default-index https://pypi.org/simple "$PROJECT_DIR/pdf_demo.py" --full-evidence "$@"
+    ;;
   restore-langfuse) restore_langfuse ;;
   *)
-    echo "用法：$0 {start|stop|status|logs [服务名]|pull|smoke|restore-langfuse}" >&2
+    echo "用法：$0 {start|stop|status|logs [服务名]|pull|smoke|demo|session-demo|pdf-demo|evidence-demo|restore-langfuse}" >&2
     exit 2
     ;;
 esac

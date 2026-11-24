@@ -1,0 +1,20 @@
+[project]
+name = "deepagents-opik-demo"
+version = "0.1.0"
+description = "DeepAgents 接入 Opik，演示订单多轮评分及 PDF 主子代理分析"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents==0.7.40",
+    "langchain-openai==1.8.3",
+    "mcp==1.30.0",
+    "opik==2.2.151",
+    "pypdf==7.1.1",
+]
+
+[tool.uv]
+# 使用独立虚拟环境和锁文件，不改变原 Langfuse 样例的依赖。
+package = false
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true

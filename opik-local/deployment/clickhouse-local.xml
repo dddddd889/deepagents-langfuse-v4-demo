@@ -1,6 +1,7 @@
 <clickhouse>
     <!-- 限制本地实例的内存预算，为 Java 后端及其他数据库留出空间。 -->
-    <max_server_memory_usage>1500000000</max_server_memory_usage>
+    <!-- 会话评估实测会突破旧的 1.5GB 上限，保留约 0.5GiB 容器余量。 -->
+    <max_server_memory_usage>2684354560</max_server_memory_usage>
     <mark_cache_size>134217728</mark_cache_size>
     <uncompressed_cache_size>33554432</uncompressed_cache_size>
 </clickhouse>

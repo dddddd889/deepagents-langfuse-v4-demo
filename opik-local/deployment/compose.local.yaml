@@ -9,7 +9,8 @@ services:
   clickhouse:
     # 本机已缓存官方同版本标准镜像，复用它以减少首次部署的网络下载量。
     image: clickhouse/clickhouse-server:26.3.62.3
-    mem_limit: 2g
+    # 会话评分会同时读取多轮 trace 和工具 span，预留查询峰值空间。
+    mem_limit: 3g
     restart: unless-stopped
     volumes:
       - ./clickhouse-local.xml:/etc/clickhouse-server/config.d/local-memory.xml:ro

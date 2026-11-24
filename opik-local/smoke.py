@@ -40,7 +40,7 @@ def request_api(opener, base_url, method, path, payload=None):
         return (json.loads(text) if text else None), response.headers
 
 
-def ensure_project(opener, base_url, project_name):
+def ensure_project(opener, base_url, project_name, description="Opik 本地部署验证，不调用模型"):
     """精确查找验证项目，不存在时创建；重复运行不会重复创建项目。"""
     try:
         project, _ = request_api(
@@ -55,7 +55,7 @@ def ensure_project(opener, base_url, project_name):
         base_url,
         "POST",
         "/v1/private/projects",
-        {"name": project_name, "description": "Opik 本地部署验证，不调用模型"},
+        {"name": project_name, "description": description},
     )
     project, _ = request_api(
         opener, base_url, "POST", "/v1/private/projects/retrieve", {"name": project_name}
